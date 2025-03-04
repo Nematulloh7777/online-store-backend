@@ -1,56 +1,50 @@
 import { Request, Response } from 'express'
+import cloudinary from '../config/cloudinaryConfig';
 import fs from 'fs'
-import path from 'path'
 
-export const uploadImage = (req: Request, res: Response): void => {
-    const category = req.body.category || '';
-    const uploadPath = category ? path.join('uploads', category) : 'uploads';
-
-    if (!fs.existsSync(uploadPath)) {
-        fs.mkdirSync(uploadPath, { recursive: true });
-    }
-
-    const tempPath = req.file?.path;
-    const targetPath = path.join(uploadPath, req.file?.originalname || '');
-
-    if (!tempPath || !req.file?.originalname) {
-        res.status(400).json({ message: 'Некорректный файл' });
+export const uploadImage = async(req: Request, res: Response) => {
+    if (!req.file) {
+        res.status(400).json({ message: "Файл не загружен" })
         return
     }
-
-    fs.rename(tempPath, targetPath, (err) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ message: 'Ошибка при сохранении файла' });
-        }
-
-        const fileUrl = category
-            ? `/uploads/${category}/${req.file?.originalname}`
-            : `/uploads/${req.file?.originalname}`;
-
-        res.json({ url: fileUrl });
-    });
-};
-
-
-export const deleteImage = (req: Request, res: Response) => {
-    const { category, filename } = req.params;
-    const filePath = category
-        ? path.join('uploads', category, filename)
-        : path.join('uploads', filename);
-
-    fs.access(filePath, fs.constants.F_OK, (err) => {
-        if (err) {
-            return res.status(404).json({ message: 'Файл не найден' });
-        }
-
-        fs.unlink(filePath, (unlinkErr) => {
-            if (unlinkErr) {
-                console.error(unlinkErr);
-                return res.status(500).json({ message: 'Не удалось удалить файл' });
-            }
-
-            res.json({ message: 'Файл успешно удален' });
+  
+    try {
+        const result = await cloudinary.uploader.upload(req.file.path, {
+        folder: "store",
         });
-    });
-};
+
+        fs.unlinkSync(req.file.path);
+
+        res.json({
+        url: result.secure_url,
+        public_id: result.public_id,
+        });
+    } catch (error) {
+        console.error("Ошибка загрузки в Cloudinary:", error);
+        res.status(500).json({ message: "Ошибка при загрузке файла" });
+    }
+  };
+
+
+  export const deleteImage = async (req: Request, res: Response): Promise<void> => {
+    const { public_id } = req.body;
+  
+    if (!public_id || typeof public_id !== "string") {
+        res.status(400).json({ message: "Некорректный public_id" });
+        return;
+    }
+  
+    try {
+      const result = await cloudinary.uploader.destroy(public_id);
+  
+      if (result.result !== "ok") {
+        throw new Error("Cloudinary не смог удалить файл");
+      }
+  
+      res.json({ message: "Файл успешно удален" });
+    } catch (error) {
+      console.error("Ошибка удаления из Cloudinary:", error);
+      res.status(500).json({ message: "Ошибка при удалении файла" });
+    }
+  };
+  

@@ -7,7 +7,7 @@ import itemsRouter from './routes/items'
 import uploadRouter from './routes/upload'
 
 mongoose
-    .connect('mongodb+srv://admin:password10@cluster0.5uz7t.mongodb.net/store?retryWrites=true&w=majority&appName=Cluster0')
+    .connect(process.env.MONGODB_URI || "")
     .then(() => console.log('DB ok'))
     .catch((err) => console.log('DB error', err))
 
@@ -24,11 +24,11 @@ app.use('/api/items', itemsRouter)
 
 app.use('/api', uploadRouter)
 
-const PORT = 5000
+const PORT = process.env.PORT || 5000;
 
-app.listen(PORT || 5000, (err) => {
+app.listen(PORT, (err) => {
     if (err) {
         return console.log(err)
     }
-    console.log(`Server is running in port http://localhost:${PORT}/`)
+    console.log(`Server is running in port ${PORT}`)
 })
