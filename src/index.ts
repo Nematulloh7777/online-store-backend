@@ -5,11 +5,14 @@ import cors from 'cors'
 import usersRouter from './routes/users'
 import itemsRouter from './routes/items'
 import uploadRouter from './routes/upload'
+import dotenv from "dotenv";
 
 mongoose
     .connect(process.env.MONGODB_URI || "")
     .then(() => console.log('DB ok'))
     .catch((err) => console.log('DB error', err))
+
+dotenv.config()
 
 const app = express()
 
